@@ -300,5 +300,8 @@ class CrossEn(nn.Module):
         :param sim_matrix: similarity matrix of size (batch_size, batch_size), unnormailzed
         :return: loss (scalar)
         """
-    
-        return NotImplementedError
+        logpt1 = F.log_softmax(sim_matrix, dim=0)
+        nce_loss1 = -torch.diag(logpt1).mean()
+        logpt2 = F.log_softmax(sim_matrix, dim=1)
+        nce_loss2 = -torch.diag(logpt2).mean()
+        return (nce_loss1 + nce_loss2) / 2

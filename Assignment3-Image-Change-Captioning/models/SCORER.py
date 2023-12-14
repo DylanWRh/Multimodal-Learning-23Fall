@@ -51,8 +51,11 @@ class Attention(nn.Module):
         you should also apply dropout to the attention scores, and return the mean attention scores over all heads.
         """
         #--- You should implement the linear projection here. ---#
-        raise NotImplementedError
-    
+        # Calculate attention score
+        query_layer = self.transpose_for_scores(self.query(query_states)) # (N, nh, Lq, dh)
+        key_layer = self.transpose_for_scores(self.key(key_states))     # (N, nh, L, dh)
+        value_layer = self.transpose_for_scores(self.value(value_states)) # (N, nh, L, dh)
+
         #####################################
         #--- You don't need to change the code in this part. ---#
         # multi-head token-wise matching
@@ -70,7 +73,23 @@ class Attention(nn.Module):
         ##################################################
 
         #--- You should implement the attention here ---#
-        raise NotImplementedError
+        attn_score = torch.matmul(query_layer, key_layer.transpose(-1, -2))   # (N, nh, Lq, L)
+        attn_score = attn_score / math.sqrt(self.attention_head_size)
+
+        # From the codes above, I think it not necessary to apply mask
+        
+        # Apply softmax
+        attention_probs = F.softmax(attn_score, dim=-1)
+
+        # Apply dropout
+        attention_probs = self.dropout(attention_probs)
+
+        # Calculate context layer and permute
+        context_layer = torch.matmul(attention_probs, value_layer) # (N, nh, Lq, dh)
+        context_layer = context_layer.permute(0, 2, 1, 3).contiguous()  # (N, Lq, nh, dh)
+
+        new_context_layer_shape = context_layer.size()[:-2] + (D,)
+        context_layer = context_layer.view(*new_context_layer_shape)    # (N, Lq, D)
 
         #--- You don't need to change the code in this part. ---#
         context_layer += query_states
